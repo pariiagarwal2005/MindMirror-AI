@@ -1,0 +1,10 @@
+id="0k4x1n"
+venv/
+
+__pycache__/
+
+*.pyc
+
+mindmirror.db
+
+.env
