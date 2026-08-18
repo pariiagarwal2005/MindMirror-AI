@@ -1,40 +1,57 @@
-def generate_reflection(text, emotion):
+def generate_reflection(text, emotion=None):
+    """
+    Generates a simple fallback reflection.
 
-    reflections = {
+    NOTE:
+    MindMirror's main conversational intelligence is now handled
+    by the chat system. This function remains available for the
+    journal/reflection feature.
+    """
 
-        "sadness": 
-        "You seem to be going through a difficult emotional phase. "
-        "Try giving yourself some time, take small steps, and talk to someone you trust.",
+    text = text.strip()
 
+    if not text:
+        return (
+            "I'm here. You can start wherever feels easiest."
+        )
 
-        "fear":
-        "It looks like you may be feeling overwhelmed or uncertain. "
-        "Try breaking your challenges into smaller tasks and focus on one step at a time.",
+    lower_text = text.lower()
 
+    # =========================================================
+    # SAFETY
+    # =========================================================
 
-        "anger":
-        "It seems like something is bothering you deeply. "
-        "Taking a pause and reflecting before reacting may help you process these feelings.",
+    serious_keywords = [
+        "kill myself",
+        "suicide",
+        "end my life",
+        "want to die",
+        "don't want to live",
+        "hurt myself",
+        "self harm",
+        "self-harm"
+    ]
 
+    if any(keyword in lower_text for keyword in serious_keywords):
 
-        "joy":
-        "It is wonderful to see positive emotions. "
-        "Try remembering these moments and what contributed to your happiness.",
+        return (
+            "🫂 I'm really sorry you're carrying something this heavy. "
+            "I'm glad you said it instead of keeping it completely to "
+            "yourself.\n\n"
+            "Right now, your safety matters more than figuring everything "
+            "else out. Please stay around someone you trust and reach out "
+            "for immediate support if you feel you might act on these "
+            "thoughts.\n\n"
+            "Are you in immediate danger right now?"
+        )
 
+    # =========================================================
+    # NATURAL FALLBACK
+    # =========================================================
 
-        "surprise":
-        "Something unexpected seems to have affected you. "
-        "Take some time to understand how this experience made you feel.",
-
-
-        "neutral":
-        "Your thoughts seem balanced today. "
-        "Continue reflecting on your emotions and experiences."
-    }
-
-
-    return reflections.get(
-        emotion,
-        "Keep reflecting on your thoughts and emotions. "
-        "Understanding yourself is an important step."
+    return (
+        f"💜 I hear you.\n\n"
+        f"You said: \"{text}\"\n\n"
+        "You don't have to explain everything perfectly. "
+        "I'm here, and we can take this one thought at a time."
     )

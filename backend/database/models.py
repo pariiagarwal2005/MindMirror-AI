@@ -1,12 +1,24 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from database.database import Base
 from datetime import datetime
 
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey
+)
 
-class Journal(Base):
+from database.database import Base
 
-    __tablename__ = "journals"
 
+# =========================================================
+# USER
+# =========================================================
+
+class User(Base):
+
+    __tablename__ = "users"
 
     id = Column(
         Integer,
@@ -14,35 +26,101 @@ class Journal(Base):
         index=True
     )
 
-
-    text = Column(
-        String
-    )
-
-
-    mood = Column(
+    username = Column(
         String,
-        nullable=True
+        unique=True,
+        nullable=False,
+        index=True
     )
 
-
-    emotion = Column(
+    email = Column(
         String,
-        nullable=True
+        unique=True,
+        nullable=False,
+        index=True
     )
 
-
-    confidence = Column(
+    hashed_password = Column(
         String,
-        nullable=True
+        nullable=False
     )
 
 
-    ai_reflection = Column(
+# =========================================================
+# CONVERSATION
+# =========================================================
+
+class Conversation(Base):
+
+    __tablename__ = "conversations"
+
+    id = Column(
         String,
-        nullable=True
+        primary_key=True,
+        index=True
     )
 
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True
+    )
+
+    title = Column(
+        String,
+        nullable=False,
+        default="New conversation"
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+
+# =========================================================
+# CHAT MESSAGE
+# =========================================================
+
+class ChatMessage(Base):
+
+    __tablename__ = "chat_messages"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True
+    )
+
+    conversation_id = Column(
+        String,
+        nullable=True,
+        index=True
+    )
+
+    role = Column(
+        String,
+        nullable=False
+    )
+
+    content = Column(
+        Text,
+        nullable=False
+    )
 
     created_at = Column(
         DateTime,

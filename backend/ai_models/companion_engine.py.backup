@@ -1,0 +1,422 @@
+# =========================================================
+# MINDMIRROR COMPANION ENGINE
+# =========================================================
+
+
+# =========================================================
+# RESPONSE MODES
+# =========================================================
+
+LISTEN = "listen"
+COMFORT = "comfort"
+ADVICE = "advice"
+CELEBRATE = "celebrate"
+EXPLAIN = "explain"
+CASUAL = "casual"
+SAFETY = "safety"
+GENERAL = "general"
+
+
+# =========================================================
+# SAFETY DETECTION
+# =========================================================
+
+def contains_safety_signal(message):
+
+    text = message.strip().lower()
+
+    safety_words = [
+
+        "suicide",
+        "suicidal",
+        "suicidal thoughts",
+        "kill myself",
+        "killing myself",
+        "end my life",
+        "want to die",
+        "wanna die",
+        "don't want to live",
+        "dont want to live",
+        "do not want to live",
+        "hurt myself",
+        "hurting myself",
+        "self harm",
+        "self-harm",
+        "selfharm",
+        "harm myself",
+        "take my life"
+
+    ]
+
+    return any(
+        phrase in text
+        for phrase in safety_words
+    )
+
+
+# =========================================================
+# SAFETY RESOLUTION
+# =========================================================
+
+def says_safe_now(message):
+
+    text = message.strip().lower()
+
+    safe_phrases = [
+
+        "i'm safe",
+        "im safe",
+        "i am safe",
+        "i'm okay now",
+        "im okay now",
+        "i am okay now",
+        "i'm okay",
+        "im okay",
+        "i am okay",
+        "i feel safe",
+        "i am feeling safe",
+        "i don't want to hurt myself",
+        "i dont want to hurt myself",
+        "i won't hurt myself",
+        "i wont hurt myself",
+        "i'm not going to hurt myself",
+        "im not going to hurt myself",
+        "i am not going to hurt myself"
+
+    ]
+
+    return any(
+        phrase in text
+        for phrase in safe_phrases
+    )
+
+
+# =========================================================
+# DETECT USER MODE
+# =========================================================
+
+def detect_mode(message):
+
+    text = message.strip().lower()
+
+
+    # -----------------------------------------------------
+    # SAFETY
+    # -----------------------------------------------------
+
+    if contains_safety_signal(message):
+
+        return SAFETY
+
+
+    # -----------------------------------------------------
+    # LISTENING
+    # -----------------------------------------------------
+
+    listening_words = [
+
+        "just listen",
+        "don't give advice",
+        "dont give advice",
+        "don't want advice",
+        "dont want advice",
+        "no advice",
+        "just want someone to listen",
+        "i just want to talk",
+        "don't fix this",
+        "dont fix this"
+
+    ]
+
+    if any(
+        phrase in text
+        for phrase in listening_words
+    ):
+
+        return LISTEN
+
+
+    # -----------------------------------------------------
+    # ADVICE
+    # -----------------------------------------------------
+
+    advice_words = [
+
+        "what should i do",
+        "what do i do",
+        "how should i handle",
+        "how do i handle",
+        "what would you do",
+        "give me advice",
+        "need advice",
+        "help me decide",
+        "how can i fix",
+        "what can i do"
+
+    ]
+
+    if any(
+        phrase in text
+        for phrase in advice_words
+    ):
+
+        return ADVICE
+
+
+    # -----------------------------------------------------
+    # CELEBRATION
+    # -----------------------------------------------------
+
+    celebration_words = [
+
+        "i got selected",
+        "got selected",
+        "i got accepted",
+        "got accepted",
+        "i got the job",
+        "got the job",
+        "i passed",
+        "i finally did it",
+        "finally did it",
+        "i won",
+        "i achieved"
+
+    ]
+
+    if any(
+        phrase in text
+        for phrase in celebration_words
+    ):
+
+        return CELEBRATE
+
+
+    # -----------------------------------------------------
+    # QUESTIONS
+    # -----------------------------------------------------
+
+    question_words = [
+
+        "what is",
+        "what are",
+        "why is",
+        "why are",
+        "how does",
+        "how do",
+        "is it normal",
+        "can you explain",
+        "what does",
+        "what happens",
+        "should i"
+
+    ]
+
+    if (
+        "?" in text
+        or any(
+            phrase in text
+            for phrase in question_words
+        )
+    ):
+
+        return EXPLAIN
+
+
+    # -----------------------------------------------------
+    # CASUAL
+    # -----------------------------------------------------
+
+    casual_words = [
+
+        "tell me a joke",
+        "make me laugh",
+        "i'm bored",
+        "im bored",
+        "talk to me",
+        "let's talk",
+        "lets talk",
+        "say something",
+        "tell me something"
+
+    ]
+
+    if any(
+        phrase in text
+        for phrase in casual_words
+    ):
+
+        return CASUAL
+
+
+    # -----------------------------------------------------
+    # EMOTIONAL / COMFORT
+    # -----------------------------------------------------
+
+    emotional_words = [
+
+        "sad",
+        "hurt",
+        "crying",
+        "cry",
+        "lonely",
+        "alone",
+        "exhausted",
+        "drained",
+        "overwhelmed",
+        "scared",
+        "afraid",
+        "anxious",
+        "angry",
+        "upset",
+        "disappointed",
+        "grief",
+        "lost",
+        "miss",
+        "empty",
+        "numb",
+        "bad day",
+        "feel weird",
+        "feel strange",
+        "embarrassed",
+        "embarrassing"
+
+    ]
+
+    if any(
+        phrase in text
+        for phrase in emotional_words
+    ):
+
+        return COMFORT
+
+
+    # -----------------------------------------------------
+    # GENERAL
+    # -----------------------------------------------------
+
+    return GENERAL
+
+
+# =========================================================
+# MODE RESPONSE
+# =========================================================
+
+def generate_response(
+    message,
+    mode,
+    conversation=None
+):
+
+    # =====================================================
+    # LISTEN
+    # =====================================================
+
+    if mode == LISTEN:
+
+        return (
+            "Okay. No advice and no trying to fix it. 💜\n\n"
+            "I'm here. You can just talk to me exactly the way "
+            "you want to."
+        )
+
+
+    # =====================================================
+    # COMFORT
+    # =====================================================
+
+    if mode == COMFORT:
+
+        return (
+            "Yeah... that sounds like it really got to you. 💜\n\n"
+            "You don't have to explain everything perfectly. "
+            "I'm here with you.\n\n"
+            "Tell me what happened."
+        )
+
+
+    # =====================================================
+    # ADVICE
+    # =====================================================
+
+    if mode == ADVICE:
+
+        return (
+            "Yeah, let's actually think this through together. 💜\n\n"
+            "Tell me what happened and what you're trying to "
+            "decide. We'll look at your options one by one."
+        )
+
+
+    # =====================================================
+    # CELEBRATE
+    # =====================================================
+
+    if mode == CELEBRATE:
+
+        return (
+            "Wait — that's actually exciting. 💜\n\n"
+            "You should let yourself enjoy this for a second "
+            "before immediately thinking about what comes next.\n\n"
+            "You worked toward this, and now it actually happened."
+        )
+
+
+    # =====================================================
+    # EXPLAIN
+    # =====================================================
+
+    if mode == EXPLAIN:
+
+        return (
+            "Yeah, that's a fair question. 💜\n\n"
+            "Tell me exactly what you're wondering about and "
+            "I'll explain it without making it unnecessarily "
+            "complicated."
+        )
+
+
+    # =====================================================
+    # CASUAL
+    # =====================================================
+
+    if mode == CASUAL:
+
+        return (
+            "Okay, we're officially allowed to stop being serious "
+            "for a minute. 😂💜\n\n"
+            "I'm here. What kind of conversation are we having?"
+        )
+
+
+    # =====================================================
+    # SAFETY
+    # =====================================================
+
+    if mode == SAFETY:
+
+        return (
+            "I'm really glad you told me. 💜\n\n"
+            "I want to stay with this for a moment rather than "
+            "pretend everything is normal. Please don't stay "
+            "alone with these thoughts right now. Move somewhere "
+            "with other people and put some distance between you "
+            "and anything you could use to hurt yourself.\n\n"
+            "If you think you might act on these thoughts right "
+            "now, please get immediate emergency help or go to "
+            "the nearest emergency department.\n\n"
+            "You can also tell someone you trust exactly this: "
+            "\"I'm having suicidal thoughts and I need you to "
+            "stay with me.\"\n\n"
+            "Are you in immediate danger of hurting yourself "
+            "right now?"
+        )
+
+
+    # =====================================================
+    # GENERAL
+    # =====================================================
+
+    return (
+        "Yeah, I'm here. 💜\n\n"
+        "Keep going. I'm following."
+    )

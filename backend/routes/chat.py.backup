@@ -1,0 +1,668 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from database.database import get_db
+from database.models import ChatMessage
+from core.auth import get_current_user
+
+from ai_models.companion_engine import (
+    detect_mode,
+    generate_response,
+    SAFETY,
+    says_safe_now,
+    contains_safety_signal
+)
+
+import uuid
+
+
+router = APIRouter()
+
+
+# =========================================================
+# HELPER: CREATE CONVERSATION ID
+# =========================================================
+
+def create_conversation_id():
+
+    return str(uuid.uuid4())
+
+
+# =========================================================
+# HELPER: GENERATE CONVERSATION TITLE
+# =========================================================
+
+def generate_title(message: str):
+
+    text = message.strip()
+
+    if not text:
+
+        return "New conversation"
+
+    text = " ".join(text.split())
+
+    if len(text) > 45:
+
+        text = text[:45].rstrip() + "..."
+
+    return text
+
+
+# =========================================================
+# HELPER: CHECK WHETHER CONVERSATION IS IN SAFETY MODE
+# =========================================================
+
+def conversation_has_active_safety_state(messages):
+
+    """
+    Look through recent conversation history.
+
+    If the user recently expressed suicidal/self-harm thoughts,
+    keep the conversation in safety mode until the user explicitly
+    indicates that they are safe.
+    """
+
+    safety_active = False
+
+
+    for item in reversed(messages):
+
+        if item["role"] != "user":
+
+            continue
+
+
+        user_message = item["content"]
+
+
+        # -------------------------------------------------
+        # Explicitly says they are safe
+        # -------------------------------------------------
+
+        if says_safe_now(user_message):
+
+            return False
+
+
+        # -------------------------------------------------
+        # New safety signal
+        # -------------------------------------------------
+
+        if contains_safety_signal(user_message):
+
+            safety_active = True
+
+            break
+
+
+    return safety_active
+
+
+# =========================================================
+# GET ALL CONVERSATIONS
+# =========================================================
+
+@router.get("/conversations")
+async def get_conversations(
+
+    db: Session = Depends(get_db),
+
+    current_user=Depends(get_current_user)
+
+):
+
+    user_id = current_user.id
+
+
+    conversation_rows = (
+
+        db.query(
+
+            ChatMessage.conversation_id,
+
+            func.min(
+                ChatMessage.created_at
+            ).label("created_at")
+
+        )
+
+        .filter(
+
+            ChatMessage.user_id == user_id,
+
+            ChatMessage.conversation_id.isnot(None)
+
+        )
+
+        .group_by(
+            ChatMessage.conversation_id
+        )
+
+        .order_by(
+            func.max(
+                ChatMessage.created_at
+            ).desc()
+        )
+
+        .all()
+
+    )
+
+
+    conversations = []
+
+
+    for row in conversation_rows:
+
+        conversation_id = row.conversation_id
+
+
+        messages = (
+
+            db.query(ChatMessage)
+
+            .filter(
+
+                ChatMessage.user_id == user_id,
+
+                ChatMessage.conversation_id ==
+                conversation_id
+
+            )
+
+            .order_by(
+                ChatMessage.created_at.asc()
+            )
+
+            .all()
+
+        )
+
+
+        if not messages:
+
+            continue
+
+
+        first_user_message = next(
+
+            (
+
+                message
+
+                for message in messages
+
+                if message.role == "user"
+
+            ),
+
+            None
+
+        )
+
+
+        if first_user_message:
+
+            title = generate_title(
+                first_user_message.content
+            )
+
+        else:
+
+            title = "New conversation"
+
+
+        conversations.append({
+
+            "conversation_id":
+                conversation_id,
+
+            "title":
+                title,
+
+            "created_at":
+
+                (
+                    messages[0].created_at.isoformat()
+
+                    if messages[0].created_at
+
+                    else None
+                ),
+
+            "updated_at":
+
+                (
+                    messages[-1].created_at.isoformat()
+
+                    if messages[-1].created_at
+
+                    else None
+                ),
+
+            "message_count":
+                len(messages)
+
+        })
+
+
+    return {
+
+        "conversations":
+            conversations
+
+    }
+
+
+# =========================================================
+# GET ONE CONVERSATION
+# =========================================================
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(
+
+    conversation_id: str,
+
+    db: Session = Depends(get_db),
+
+    current_user=Depends(get_current_user)
+
+):
+
+    user_id = current_user.id
+
+
+    messages = (
+
+        db.query(ChatMessage)
+
+        .filter(
+
+            ChatMessage.user_id == user_id,
+
+            ChatMessage.conversation_id ==
+            conversation_id
+
+        )
+
+        .order_by(
+            ChatMessage.created_at.asc()
+        )
+
+        .all()
+
+    )
+
+
+    if not messages:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Conversation not found"
+
+        )
+
+
+    first_user_message = next(
+
+        (
+
+            message
+
+            for message in messages
+
+            if message.role == "user"
+
+        ),
+
+        None
+
+    )
+
+
+    title = (
+
+        generate_title(
+            first_user_message.content
+        )
+
+        if first_user_message
+
+        else "New conversation"
+
+    )
+
+
+    return {
+
+        "conversation_id":
+            conversation_id,
+
+        "title":
+            title,
+
+        "messages":
+
+            [
+
+                {
+
+                    "id":
+                        message.id,
+
+                    "role":
+                        message.role,
+
+                    "content":
+                        message.content,
+
+                    "created_at":
+
+                        (
+                            message.created_at.isoformat()
+
+                            if message.created_at
+
+                            else None
+                        )
+
+                }
+
+                for message in messages
+
+            ]
+
+    }
+
+
+# =========================================================
+# CHAT
+# =========================================================
+
+@router.post("/")
+async def chat(
+
+    message: str,
+
+    conversation_id: str = None,
+
+    db: Session = Depends(get_db),
+
+    current_user=Depends(get_current_user)
+
+):
+
+    user_id = current_user.id
+
+
+    # =====================================================
+    # CREATE NEW CONVERSATION
+    # =====================================================
+
+    if not conversation_id:
+
+        conversation_id = create_conversation_id()
+
+
+    else:
+
+        existing_message = (
+
+            db.query(ChatMessage)
+
+            .filter(
+
+                ChatMessage.user_id == user_id,
+
+                ChatMessage.conversation_id ==
+                conversation_id
+
+            )
+
+            .first()
+
+        )
+
+
+        if not existing_message:
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail="Conversation not found"
+
+            )
+
+
+    # =====================================================
+    # GET PREVIOUS MESSAGES
+    # =====================================================
+
+    previous_messages = (
+
+        db.query(ChatMessage)
+
+        .filter(
+
+            ChatMessage.user_id == user_id,
+
+            ChatMessage.conversation_id ==
+            conversation_id
+
+        )
+
+        .order_by(
+            ChatMessage.created_at.asc()
+        )
+
+        .all()
+
+    )
+
+
+    conversation_data = [
+
+        {
+
+            "role":
+                item.role,
+
+            "content":
+                item.content
+
+        }
+
+        for item in previous_messages
+
+    ]
+
+
+    # =====================================================
+    # CHECK CURRENT SAFETY STATE
+    # =====================================================
+
+    safety_active = (
+        conversation_has_active_safety_state(
+            conversation_data
+        )
+    )
+
+
+    current_message_is_safety = (
+        contains_safety_signal(message)
+    )
+
+
+    # =====================================================
+    # SAVE USER MESSAGE
+    # =====================================================
+
+    user_message = ChatMessage(
+
+        user_id=user_id,
+
+        conversation_id=conversation_id,
+
+        role="user",
+
+        content=message
+
+    )
+
+
+    db.add(user_message)
+
+    db.commit()
+
+    db.refresh(user_message)
+
+
+    # =====================================================
+    # DETERMINE RESPONSE MODE
+    # =====================================================
+
+    if current_message_is_safety:
+
+        mode = SAFETY
+
+
+    elif safety_active:
+
+        # -------------------------------------------------
+        # The user previously expressed suicidal/self-harm
+        # thoughts and has not yet said they are safe.
+        #
+        # Do not immediately return to ordinary conversation.
+        # -------------------------------------------------
+
+        mode = SAFETY
+
+
+    else:
+
+        mode = detect_mode(message)
+
+
+    # =====================================================
+    # GENERATE RESPONSE
+    # =====================================================
+
+    reply = generate_response(
+
+        message,
+
+        mode,
+
+        conversation_data
+
+    )
+
+
+    # =====================================================
+    # SAVE ASSISTANT MESSAGE
+    # =====================================================
+
+    assistant_message = ChatMessage(
+
+        user_id=user_id,
+
+        conversation_id=conversation_id,
+
+        role="assistant",
+
+        content=reply
+
+    )
+
+
+    db.add(assistant_message)
+
+    db.commit()
+
+    db.refresh(assistant_message)
+
+
+    # =====================================================
+    # RETURN RESPONSE
+    # =====================================================
+
+    return {
+
+        "reply":
+            reply,
+
+        "conversation_id":
+            conversation_id,
+
+        "message_id":
+            assistant_message.id
+
+    }
+
+
+# =========================================================
+# DELETE CONVERSATION
+# =========================================================
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+
+    conversation_id: str,
+
+    db: Session = Depends(get_db),
+
+    current_user=Depends(get_current_user)
+
+):
+
+    user_id = current_user.id
+
+
+    messages = (
+
+        db.query(ChatMessage)
+
+        .filter(
+
+            ChatMessage.user_id == user_id,
+
+            ChatMessage.conversation_id ==
+            conversation_id
+
+        )
+
+        .all()
+
+    )
+
+
+    if not messages:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Conversation not found"
+
+        )
+
+
+    for message in messages:
+
+        db.delete(message)
+
+
+    db.commit()
+
+
+    return {
+
+        "message":
+            "Conversation deleted successfully"
+
+    }

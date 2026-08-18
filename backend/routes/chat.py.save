@@ -1,0 +1,947 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from database.database import get_db
+from core.security import get_current_user
+
+
+router = APIRouter()
+
+
+@router.post("/chat")
+def chat(
+    message: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    text = message.strip()
+    lower_text = text.lower()
+
+
+    # =========================================================
+    # SAFETY
+    # =========================================================
+
+    serious_keywords = [
+        "kill myself",
+        "suicide",
+        "end my life",
+        "want to die",
+        "don't want to live",
+        "dont want to live",
+        "hurt myself",
+        "self harm",
+        "self-harm",
+        "take my life"
+    ]
+
+    if any(keyword in lower_text for keyword in serious_keywords):
+
+        return {
+            "reply": (
+                "🫂 I'm really sorry you're going through something "
+                "this overwhelming. What you're feeling matters, and "
+                "you don't have to handle everything alone.\n\n"
+                "Right now, please focus on staying safe and reaching "
+                "out to someone you trust who can be with you. "
+                "MindMirror can listen and help you reflect, but it "
+                "cannot replace professional or emergency support.\n\n"
+                "For this moment, you don't need to solve everything. "
+                "Just focus on getting through the next few minutes. 💜\n\n"
+                "Are you somewhere safe right now?"
+            )
+        }
+
+
+    # =========================================================
+    # EXAMS / STUDY / PROJECT PRESSURE
+    # =========================================================
+
+    exam_words = [
+        "exam",
+        "exams",
+        "study",
+        "studying",
+        "assignment",
+        "assignments",
+        "syllabus",
+        "college",
+        "semester",
+        "deadline",
+        "project",
+        "work left",
+        "finish everything",
+        "finish everything on time",
+        "failing",
+        "fail",
+        "disappoint everyone"
+    ]
+
+    if any(word in lower_text for word in exam_words):
+
+        if (
+            "compare" in lower_text
+            or "comparing" in lower_text
+            or "other students" in lower_text
+            or "falling behind" in lower_text
+        ):
+
+            return {
+                "reply": (
+                    "🫂 It sounds like you're under a lot of pressure "
+                    "right now, and comparing yourself with people who "
+                    "seem more prepared is making that pressure even "
+                    "heavier.\n\n"
+                    "But someone else's progress doesn't tell you "
+                    "anything about your ability. You don't have to be "
+                    "as prepared as someone else today to still make "
+                    "good progress from where you are.\n\n"
+                    "And honestly, being scared of failing usually "
+                    "doesn't mean you don't care — it often means you "
+                    "care a lot about the outcome. 💜\n\n"
+                    "Instead of thinking about everything that's left, "
+                    "choose just one thing you can finish today. "
+                    "One chapter, one assignment, one topic. Let that "
+                    "be enough for now. 🌱\n\n"
+                    "What is the most urgent thing you need to finish?"
+                )
+            }
+
+
+        return {
+            "reply": (
+                "🫂 It sounds like you're carrying a lot of pressure "
+                "right now. When exams, deadlines, and unfinished work "
+                "start piling up, it's easy for your brain to turn "
+                "everything into one huge problem.\n\n"
+                "But you don't have to solve everything tonight. "
+                "You only need to decide what comes next.\n\n"
+                "Take a breath and choose the single most important "
+                "thing you can work on first. Even 20–30 focused "
+                "minutes is progress. 🌱\n\n"
+                "And being scared of failing doesn't mean you're going "
+                "to fail. It means this matters to you. Give yourself "
+                "a chance to work through it instead of judging "
+                "yourself before you've finished.\n\n"
+                "What is the biggest thing you still need to complete?"
+            )
+        }
+
+
+    # =========================================================
+    # RELATIONSHIP / TRUST
+    # =========================================================
+
+    relationship_words = [
+        "trust issues",
+        "cheating",
+        "cheated",
+        "cheat on me",
+        "betray",
+        "betrayed",
+        "betrayal",
+        "lying to me",
+        "lied to me",
+        "relationship",
+        "boyfriend",
+        "girlfriend",
+        "ex boyfriend",
+        "ex girlfriend",
+        "my ex"
+    ]
+
+    if any(word in lower_text for word in relationship_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like there's a lot of uncertainty and "
+                "hurt behind what you're feeling. When trust is shaken, "
+                "your mind can keep looking for answers and replaying "
+                "different possibilities.\n\n"
+                "Try separating what you actually know from what you're "
+                "afraid might be true. Your feelings are completely "
+                "valid, but you don't have to make an important decision "
+                "while you're overwhelmed.\n\n"
+                "You deserve honesty, respect, and a relationship where "
+                "you don't constantly have to question where you stand. "
+                "💜\n\n"
+                "If you want, tell me what happened that made you start "
+                "feeling this way."
+            )
+        }
+
+
+    # =========================================================
+    # SADNESS / LONELINESS
+    # =========================================================
+
+    sadness_words = [
+        "sad",
+        "sadness",
+        "lonely",
+        "loneliness",
+        "cry",
+        "crying",
+        "heartbroken",
+        "heartbreak",
+        "miss someone",
+        "miss him",
+        "miss her",
+        "nobody understands",
+        "no one understands",
+        "feel alone",
+        "feeling alone"
+    ]
+
+    if any(word in lower_text for word in sadness_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like you're carrying something emotionally "
+                "heavy right now. And I'm glad you put it into words "
+                "instead of keeping it completely inside.\n\n"
+                "You don't have to force yourself to feel better "
+                "immediately. Sometimes the first step is simply "
+                "acknowledging that something hurts.\n\n"
+                "Feeling lonely or misunderstood right now doesn't mean "
+                "you'll always feel this way. Be a little gentler with "
+                "yourself today. 🌱\n\n"
+                "You don't have to figure everything out at once. "
+                "What has been weighing on you the most?"
+            )
+        }
+
+
+    # =========================================================
+    # ANGER / FRUSTRATION
+    # =========================================================
+
+    anger_words = [
+        "angry",
+        "anger",
+        "frustrated",
+        "frustrating",
+        "annoyed",
+        "annoying",
+        "pissed",
+        "furious",
+        "hate this",
+        "fed up"
+    ]
+
+    if any(word in lower_text for word in anger_words):
+
+        return {
+            "reply": (
+                "💭 It sounds like something has really pushed you "
+                "to your limit. It's okay to acknowledge that you're "
+                "angry instead of pretending everything is fine.\n\n"
+                "Sometimes anger appears when we feel hurt, ignored, "
+                "disrespected, disappointed, or simply overwhelmed.\n\n"
+                "Before deciding what to do next, give yourself a little "
+                "space to understand what is actually underneath that "
+                "anger. You don't have to solve everything while you're "
+                "still overwhelmed. 🌱\n\n"
+                "What happened that made you feel this strongly?"
+            )
+        }
+
+
+    # =========================================================
+    # POSITIVE / SUCCESS / RELIEF
+    # =========================================================
+
+    positive_words = [
+        "happy",
+        "excited",
+        "proud",
+        "relieved",
+        "great day",
+        "good day",
+        "amazing",
+        "finally finished",
+        "finally worked",
+        "it worked",
+        "succeeded",
+        "success",
+        "accomplished",
+        "finished something",
+        "feel good"
+    ]
+
+    if any(word in lower_text for word in positive_words):
+
+        return {
+            "reply": (
+                "✨ I really like the way you're talking about this. "
+                "You were struggling with something for a while, "
+                "and you actually got through it.\n\n"
+                "That feeling of relief and pride is worth noticing. "
+                "It's easy to remember every time something went wrong "
+                "and forget the moments when you proved to yourself "
+                "that you could actually do it.\n\n"
+                "Maybe keep this moment in mind the next time that "
+                "self-doubt shows up. You have evidence now that "
+                "struggling with something doesn't mean you're incapable "
+                "of doing it. 💜\n\n"
+                "You should genuinely give yourself credit for this. 🌱\n\n"
+                "What was the thing you finally managed to accomplish?"
+            )
+        }
+
+
+    # =========================================================
+    # FEAR / ANXIETY
+    # =========================================================
+
+    fear_words = [
+        "scared",
+        "afraid",
+        "fear",
+        "worried",
+        "worry",
+        "anxious",
+        "anxiety",
+        "nervous",
+        "terrified",
+        "what if",
+        "panic"
+    ]
+
+    if any(word in lower_text for word in fear_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like your mind is stuck on what might "
+                "go wrong right now. When something matters to us, "
+                "our brain can start imagining every possible bad "
+                "outcome at once.\n\n"
+                "But being afraid that something will go badly doesn't "
+                "mean that it actually will. Right now, try separating "
+                "what you know from what you're predicting.\n\n"
+                "You don't have to solve the entire situation tonight. "
+                "Focus on the next small thing that is actually within "
+                "your control. 🌱\n\n"
+                "Take it one step at a time. You're allowed to be scared "
+                "and still keep going. 💜\n\n"
+                "What are you most afraid might happen?"
+            )
+        }
+
+
+    # =========================================================
+    # OVERWHELM / BAD DAY
+    # =========================================================
+
+    overwhelm_words = [
+        "bad day",
+        "terrible day",
+        "horrible day",
+        "rough day",
+        "difficult day",
+        "hard day",
+        "overwhelmed",
+        "exhausted",
+        "drained",
+        "burnt out",
+        "burned out"
+    ]
+
+    if any(word in lower_text for word in overwhelm_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like you've had one of those days where "
+                "everything feels heavier than usual.\n\n"
+                "You don't have to fix your entire life tonight. "
+                "Sometimes the best thing you can do is lower the "
+                "expectation for yourself and just get through the "
+                "next small thing.\n\n"
+                "Drink some water, take a few slow breaths, step away "
+                "from whatever is overwhelming you for a moment, and "
+                "give yourself permission to rest if you need it. 🌱\n\n"
+                "One difficult day doesn't define you or your progress. "
+                "Tomorrow gets to be a new day. 💜\n\n"
+                "What happened today that made it feel so difficult?"
+            )
+        }
+
+
+    # =========================================================
+    # CALM DOWN REQUEST
+    # =========================================================
+
+    calm_words = [
+        "calm me down",
+        "help me calm down",
+        "calm down",
+        "can't calm down",
+        "i need to calm down",
+        "help me relax",
+        "i need to relax"
+    ]
+
+    if any(word in lower_text for word in calm_words):
+
+        return {
+            "reply": (
+                "🫂 Okay. Let's slow everything down for a moment.\n\n"
+                "You don't need to figure anything out right now. "
+                "Put both feet on the floor and take one slow breath "
+                "in through your nose, then breathe out slowly.\n\n"
+                "Now look around and notice three things you can see. "
+                "Let your attention come back to where you are instead "
+                "of everything your mind is worrying about.\n\n"
+                "Whatever is happening can wait for a few minutes. "
+                "You only need to take care of this moment. 🌱\n\n"
+                "When you're ready, tell me what's making you feel "
+                "so overwhelmed right now."
+            )
+        }
+
+
+    # =========================================================
+    # ENCOURAGEMENT
+    # =========================================================
+
+    encouragement_words = [
+        "encourage me",
+        "need encouragement",
+        "motivate me",
+        "motivation",
+        "i need support",
+        "give me hope",
+        "i need hope"
+    ]
+
+    if any(word in lower_text for word in encouragement_words):
+
+        return {
+            "reply": (
+                "💜 Hey, take a moment and give yourself some credit.\n\n"
+                "You have already made it through difficult moments "
+                "that once felt impossible. You don't need to have "
+                "everything figured out today.\n\n"
+                "You just need to keep moving one small step at a time. "
+                "Progress doesn't always look impressive while you're "
+                "living through it, but that doesn't mean it isn't "
+                "happening. 🌱\n\n"
+                "Whatever you're facing right now, don't decide that "
+                "you can't do it before you've given yourself the chance "
+                "to try.\n\n"
+                "What's the one thing you're struggling with right now?"
+            )
+        }
+
+
+    # =========================================================
+    # DEFAULT
+    # =========================================================
+
+    return {
+        "reply": (
+            "💜 I'm listening.\n\n"
+            f"You said: \"{text}\"\n\n"
+            "You don't have to explain everything perfectly. "
+            "Take your time and tell me a little more about what's "
+            "going through your mind.\n\n"
+            "I'm here to listen without judging you. 🌱\n\n"
+            "What feels most important to talk about right now?"
+        )
+    }
+
+
+
+
+
+
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from database.database import get_db
+from core.security import get_current_user
+
+
+router = APIRouter()
+
+
+@router.post("/chat")
+def chat(
+    message: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    text = message.strip()
+    lower_text = text.lower()
+
+
+    # =========================================================
+    # SAFETY
+    # =========================================================
+
+    serious_keywords = [
+        "kill myself",
+        "suicide",
+        "end my life",
+        "want to die",
+        "don't want to live",
+        "dont want to live",
+        "hurt myself",
+        "self harm",
+        "self-harm"
+    ]
+
+    if any(keyword in lower_text for keyword in serious_keywords):
+
+        return {
+            "reply": (
+                "🫂 I'm really sorry you're going through something "
+                "this overwhelming. What you're feeling matters, and "
+                "you don't have to handle it completely alone.\n\n"
+
+                "Right now, your immediate safety matters most. "
+                "Please consider reaching out to someone you trust "
+                "and staying around people who can support you.\n\n"
+
+                "MindMirror can listen and help you reflect, but it "
+                "cannot replace professional or emergency support. "
+                "Are you somewhere safe right now?"
+            )
+        }
+
+
+    # =========================================================
+    # EXAMS / STUDY / ACADEMIC PRESSURE
+    # =========================================================
+
+    exam_words = [
+        "exam",
+        "exams",
+        "study",
+        "studying",
+        "syllabus",
+        "assignment",
+        "assignments",
+        "college",
+        "deadline",
+        "deadlines",
+        "semester",
+        "test",
+        "tests",
+        "revision"
+    ]
+
+    if any(word in lower_text for word in exam_words):
+
+        if (
+            "scared" in lower_text
+            or "afraid" in lower_text
+            or "fail" in lower_text
+            or "failure" in lower_text
+            or "worried" in lower_text
+            or "anxious" in lower_text
+        ):
+
+            return {
+                "reply": (
+                    "🫂 It sounds like the pressure is coming from "
+                    "having a lot to finish while also worrying that "
+                    "there isn't enough time.\n\n"
+
+                    "That can make everything feel impossible before "
+                    "you've even started. But being behind right now "
+                    "doesn't mean you're incapable of catching up.\n\n"
+
+                    "Instead of thinking about the entire syllabus, "
+                    "pick one subject and one small topic. Give it "
+                    "your full attention for the next 20–30 minutes. "
+                    "Then decide what comes next. 🌱\n\n"
+
+                    "You don't need to prove that you can finish "
+                    "everything tonight. You only need to make the "
+                    "next bit of progress.\n\n"
+
+                    "Which subject is worrying you the most right now?"
+                )
+            }
+
+
+        if (
+            "tired" in lower_text
+            or "exhausted" in lower_text
+            or "can't focus" in lower_text
+            or "cannot focus" in lower_text
+        ):
+
+            return {
+                "reply": (
+                    "🌱 It sounds like you're mentally exhausted, not "
+                    "just busy. When your brain has been thinking about "
+                    "deadlines for too long, even starting can feel "
+                    "like a huge task.\n\n"
+
+                    "Don't try to force yourself through everything at "
+                    "once. Take a short break, drink some water, and "
+                    "come back with one very small task.\n\n"
+
+                    "You don't need a perfect study session. Even a "
+                    "small amount of focused work counts. 💜\n\n"
+
+                    "What is the easiest thing you could start with?"
+                )
+            }
+
+
+        return {
+            "reply": (
+                "🌱 It sounds like academics are taking up a lot of "
+                "space in your mind right now.\n\n"
+
+                "Try not to measure your progress against everyone "
+                "else. People rarely show how much they are struggling "
+                "behind the scenes.\n\n"
+
+                "Focus on your own list: what needs to be done first, "
+                "what can wait, and what can realistically be finished "
+                "today.\n\n"
+
+                "You don't have to finish everything perfectly. "
+                "You just need to keep moving forward. 💜\n\n"
+
+                "What are you working on at the moment?"
+            )
+        }
+
+
+    # =========================================================
+    # ANGER
+    # =========================================================
+
+    anger_words = [
+        "angry",
+        "anger",
+        "furious",
+        "frustrated",
+        "frustrating",
+        "annoyed",
+        "annoying",
+        "pissed",
+        "mad",
+        "rage",
+        "irritated"
+    ]
+
+    if any(word in lower_text for word in anger_words):
+
+        if (
+            "lie" in lower_text
+            or "lied" in lower_text
+            or "lying" in lower_text
+            or "trust" in lower_text
+            or "betray" in lower_text
+            or "betrayed" in lower_text
+        ):
+
+            return {
+                "reply": (
+                    "🫂 I can understand why you're angry. When "
+                    "someone you trusted lies to you, the anger often "
+                    "comes with hurt underneath it.\n\n"
+
+                    "You don't have to pretend that what happened was "
+                    "okay. At the same time, you don't have to decide "
+                    "what to do about the relationship while you're "
+                    "still in the middle of that anger.\n\n"
+
+                    "Give yourself some space to process what happened. "
+                    "You can be angry, disappointed, and still take care "
+                    "of yourself at the same time. 💜\n\n"
+
+                    "What did they do that made you feel betrayed?"
+                )
+            }
+
+
+        return {
+            "reply": (
+                "💭 It sounds like something has really pushed you "
+                "past your limit.\n\n"
+
+                "You don't have to suppress the anger, but you also "
+                "don't have to act on it immediately. Sometimes giving "
+                "yourself a little distance helps you understand what "
+                "the anger is actually trying to tell you.\n\n"
+
+                "Maybe you're feeling disrespected, ignored, "
+                "disappointed, or simply exhausted from dealing with "
+                "the same situation.\n\n"
+
+                "Take a moment before reacting. You can decide what "
+                "you want to do once things feel a little clearer. 🌱\n\n"
+
+                "What happened?"
+            )
+        }
+
+
+    # =========================================================
+    # RELATIONSHIP / TRUST
+    # =========================================================
+
+    relationship_words = [
+        "trust",
+        "cheat",
+        "cheating",
+        "betray",
+        "betrayed",
+        "lied",
+        "lying",
+        "lie",
+        "relationship",
+        "boyfriend",
+        "girlfriend",
+        "partner",
+        "ex"
+    ]
+
+    if any(word in lower_text for word in relationship_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like this relationship situation is "
+                "leaving you with a lot of uncertainty.\n\n"
+
+                "When trust is shaken, it's normal for your mind to "
+                "keep replaying things and looking for signs that "
+                "something is wrong.\n\n"
+
+                "Try separating the things you actually know from the "
+                "things you're afraid might be true. Both your feelings "
+                "and the facts matter, but they aren't always the same "
+                "thing.\n\n"
+
+                "You deserve honesty and a relationship where you "
+                "don't constantly have to question your place in "
+                "someone's life. 💜\n\n"
+
+                "What happened that made you start feeling this way?"
+            )
+        }
+
+
+    # =========================================================
+    # SADNESS / LONELINESS
+    # =========================================================
+
+    sadness_words = [
+        "sad",
+        "sadness",
+        "lonely",
+        "alone",
+        "cry",
+        "crying",
+        "heartbroken",
+        "hurt",
+        "empty",
+        "nobody understands",
+        "no one understands",
+        "misunderstood",
+        "miss someone",
+        "i miss"
+    ]
+
+    if any(word in lower_text for word in sadness_words):
+
+        if (
+            "nobody understands" in lower_text
+            or "no one understands" in lower_text
+            or "misunderstood" in lower_text
+        ):
+
+            return {
+                "reply": (
+                    "🫂 Feeling like nobody really understands you "
+                    "can be incredibly lonely.\n\n"
+
+                    "Sometimes what hurts isn't even being physically "
+                    "alone. It's feeling like you could explain what's "
+                    "happening inside your head and still wouldn't be "
+                    "truly heard.\n\n"
+
+                    "You don't need to make your feelings smaller just "
+                    "because other people may not completely understand "
+                    "them. What you're feeling is still real. 💜\n\n"
+
+                    "I'm here to listen. You can tell me what has been "
+                    "happening lately, even if it feels messy or difficult "
+                    "to explain.\n\n"
+
+                    "When did you start feeling this way?"
+                )
+            }
+
+
+        return {
+            "reply": (
+                "🫂 It sounds like you're carrying something that "
+                "really hurts right now.\n\n"
+
+                "You don't have to rush yourself into feeling better. "
+                "Some emotions need a little time before they become "
+                "easier to understand.\n\n"
+
+                "For now, try to be gentle with yourself. You don't "
+                "have to solve everything today, and having a difficult "
+                "moment doesn't erase the progress you've made. 🌱\n\n"
+
+                "I'm here with you. What has been hurting the most?"
+            )
+        }
+
+
+    # =========================================================
+    # FEAR / ANXIETY
+    # =========================================================
+
+    fear_words = [
+        "scared",
+        "afraid",
+        "fear",
+        "worried",
+        "worry",
+        "anxious",
+        "anxiety",
+        "nervous",
+        "panic",
+        "overthinking",
+        "overwhelmed"
+    ]
+
+    if any(word in lower_text for word in fear_words):
+
+        return {
+            "reply": (
+                "🫂 It sounds like your mind is carrying a lot of "
+                "uncertainty right now.\n\n"
+
+                "When something matters to us, our brain can start "
+                "running through every possible way things could go "
+                "wrong. Unfortunately, thinking about every possibility "
+                "doesn't give us more control over what happens.\n\n"
+
+                "Try bringing your attention back to what is actually "
+                "in front of you right now. What can you control today? "
+                "Start there. 🌱\n\n"
+
+                "You don't need to have the whole situation figured "
+                "out tonight.\n\n"
+
+                "What is the biggest thing you're afraid might happen?"
+            )
+        }
+
+
+    # =========================================================
+    # HAPPINESS / PRIDE / RELIEF
+    # =========================================================
+
+    positive_words = [
+        "happy",
+        "excited",
+        "proud",
+        "relieved",
+        "great",
+        "amazing",
+        "accomplished",
+        "success",
+        "succeeded",
+        "finished",
+        "finally",
+        "worked",
+        "worked!",
+        "good day"
+    ]
+
+    if any(word in lower_text for word in positive_words):
+
+        return {
+            "reply": (
+                "✨ You should genuinely give yourself credit for "
+                "this.\n\n"
+
+                "It sounds like you struggled with something for a "
+                "while, kept going, and eventually got to the point "
+                "where it actually worked. That feeling of relief and "
+                "pride is something worth noticing.\n\n"
+
+                "And I really like that you want to remember this moment "
+                "for the next time you doubt yourself. That's important. "
+                "You now have proof that struggling with something "
+                "doesn't mean you're incapable of doing it. 💜\n\n"
+
+                "Take a moment to enjoy the win instead of immediately "
+                "moving on to the next problem. 🌱\n\n"
+
+                "What was the thing you finally managed to accomplish?"
+            )
+        }
+
+
+    # =========================================================
+    # STRESS
+    # =========================================================
+
+    stress_words = [
+        "stress",
+        "stressed",
+        "pressure",
+        "deadline",
+        "too much",
+        "too many things",
+        "can't handle",
+        "cannot handle"
+    ]
+
+    if any(word in lower_text for word in stress_words):
+
+        return {
+            "reply": (
+                "🌱 It sounds like you've got more on your plate "
+                "than your mind knows how to organize right now.\n\n"
+
+                "When everything feels urgent, it's difficult to know "
+                "where to begin. Instead of trying to solve everything "
+                "at once, write down the few things that actually need "
+                "your attention first.\n\n"
+
+                "Then choose just one. Not because the other problems "
+                "don't matter, but because you deserve the chance to "
+                "deal with them one at a time. 💜\n\n"
+
+                "What feels most urgent right now?"
+            )
+        }
+
+
+    # =========================================================
+    # GENERAL CONVERSATION
+    # =========================================================
+
+    return {
+        "reply": (
+            "💜 I'm listening.\n\n"
+
+            f"You said: \"{text}\"\n\n"
+
+            "You don't have to explain everything perfectly. "
+            "Sometimes putting a thought into words is the first step "
+            "toward understanding it.\n\n"
+
+            "Take your time. I'm here to listen without judging you. 🌱\n\n"
+
+            "What would you like to talk about?"
+        )
+    }
