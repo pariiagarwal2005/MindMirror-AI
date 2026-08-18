@@ -1,7 +1,17 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
 
-from database.database import Base, engine
+from fastapi import FastAPI
+
+from fastapi.middleware.cors import (
+    CORSMiddleware
+)
+
+from database.database import (
+    Base,
+    engine,
+    ensure_database
+)
+
 from database import models
 
 from routes import auth
@@ -9,10 +19,14 @@ from routes import chat
 
 
 # =====================================================
-# CREATE DATABASE TABLES
+# DATABASE
 # =====================================================
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(
+    bind=engine
+)
+
+ensure_database()
 
 
 # =====================================================
@@ -20,7 +34,8 @@ Base.metadata.create_all(bind=engine)
 # =====================================================
 
 app = FastAPI(
-    title="MindMirror AI"
+    title="MindMirror AI",
+    version="1.0.0"
 )
 
 
@@ -28,15 +43,46 @@ app = FastAPI(
 # CORS
 # =====================================================
 
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    ""
+)
+
+
+allowed_origins = [
+
+    "http://localhost:5173",
+
+    "http://127.0.0.1:5173"
+
+]
+
+
+if FRONTEND_URL:
+
+    allowed_origins.append(
+        FRONTEND_URL.rstrip("/")
+    )
+
+
 app.add_middleware(
+
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
+
+    allow_origins=
+        allowed_origins,
+
+    allow_credentials=
+        True,
+
+    allow_methods=[
+        "*"
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+
+    allow_headers=[
+        "*"
+    ]
+
 )
 
 
@@ -54,18 +100,38 @@ app.include_router(
 # =====================================================
 
 app.include_router(
+
     chat.router,
+
     prefix="/chat"
+
 )
 
 
 # =====================================================
-# HOME
+# HEALTH CHECK
 # =====================================================
 
 @app.get("/")
 def home():
 
     return {
-        "message": "MindMirror AI is running"
+
+        "message":
+            "MindMirror AI is running",
+
+        "status":
+            "healthy"
+
+    }
+
+
+@app.get("/health")
+def health():
+
+    return {
+
+        "status":
+            "healthy"
+
     }
